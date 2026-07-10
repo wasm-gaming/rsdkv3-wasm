@@ -14,7 +14,7 @@
 # make version. (node/cp/python3/bash resolve via the system PATH already.)
 BIN := node_modules/.bin
 
-PORT ?= 8080
+PORT ?= 8023
 
 .PHONY: build build-sdk build-lib build-manifest build-demo build-wasm \
 	preview typecheck test i install clean help
@@ -54,8 +54,8 @@ test: typecheck ## Run the test suite (currently TypeScript checks)
 
 preview: ## Serve dist/ at http://localhost:$(PORT)
 	@echo "Serving dist/ at http://localhost:$(PORT) (Ctrl+C to stop)"
-	@# This rsdkv3 build uses an in-memory filesystem backend for runtime-mounted assets.
-	python3 -m http.server $(PORT) --directory dist
+	@# Uses a custom local server that injects COOP/COEP for cross-origin isolation.
+	python3 scripts/preview-server.py --port $(PORT) --directory dist
 
 clean: ## Remove build outputs (keeps dist/Data.rsdk and dist/settings.ini)
 # 	rm -rf .tmp

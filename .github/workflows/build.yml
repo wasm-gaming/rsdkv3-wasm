@@ -1,4 +1,5 @@
-name: build
+
+name: Build
 
 # Builds the TypeScript SDK (on a Node runner) and the game-agnostic RSDKv3 WASM
 # (inside an emscripten/emsdk container job — build.sh runs there directly, no
