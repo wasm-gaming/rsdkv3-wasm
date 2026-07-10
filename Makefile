@@ -5,7 +5,7 @@
 #
 # All build logic lives here (package.json has no scripts). Sub-targets:
 # build-sdk (TS only), build-lib/manifest/demo, build-wasm (Docker/emsdk),
-# typecheck, install, clean.
+# typecheck/test, install, clean.
 
 # Local npm bin, so we can run tsc without a global install. NOTE: we call it as
 # $(BIN)/tsc rather than adding it to PATH — macOS ships GNU Make 3.81, whose
@@ -17,7 +17,7 @@ BIN := node_modules/.bin
 PORT ?= 8080
 
 .PHONY: build build-sdk build-lib build-manifest build-demo build-wasm \
-        preview typecheck i install clean help
+	preview typecheck test i install clean help
 
 i: install
 install: ## Install dev dependencies (typescript)
@@ -49,6 +49,8 @@ build-wasm: ## WASM via emscripten/emsdk (Docker) → dist/rsdkv3/rsdkv3.{js,was
 typecheck: node_modules ## Type-check without emitting
 	$(BIN)/tsc -p tsconfig.json --noEmit
 	$(BIN)/tsc -p tsconfig.demo.json --noEmit
+
+test: typecheck ## Run the test suite (currently TypeScript checks)
 
 preview: ## Serve dist/ at http://localhost:$(PORT)
 	@echo "Serving dist/ at http://localhost:$(PORT) (Ctrl+C to stop)"

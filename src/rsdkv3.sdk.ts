@@ -1,18 +1,19 @@
 // @wasm-gaming/engine-rsdkv3 — SDK entry point.
 //
-// Conforms to the wasm-gaming engine contract (github.com/wasm-gaming/wasm-specs):
+// Conforms to the wasm-gaming engine contract (github.com/wasm-gaming/engine-specs):
 // exports `manifest` (declarative) and `load(config)` (imperative).
 //
 // The engine binary is game-agnostic for RSDKv3. Sonic CD is selected by
 // `Data.rsdk`, mounted at runtime into the Emscripten filesystem.
 
-import type { EngineConfig, EngineInstance, AssetData } from '@wasm-gaming/wasm-specs';
+import type { EngineConfig, EngineInstance, AssetData, InputPreset, KeyMap } from '@wasm-gaming/engine-specs';
 import { manifest } from './rsdkv3.manifest.js';
 import { DEFAULT_RSDKV3_OPTIONS, type Rsdkv3Options } from './rsdkv3.options.js';
 
 export { manifest };
 
 const WORK_DIR = '/data';
+const DEFAULT_STORAGE_NAMESPACE = 'default';
 
 /** Serialize engine options into RSDKv3's settings.ini format. */
 function buildSettingsIni(options: Rsdkv3Options = {}): string {
@@ -53,14 +54,40 @@ function toUint8(x: unknown): Uint8Array | null {
   throw new TypeError('asset must be Uint8Array | ArrayBuffer | string');
 }
 
-/** Ensure the game working directory exists in the in-memory filesystem. */
-function mountWorkingDir(Module: any): { persistent: boolean } {
-  try {
-    Module.FS.mkdir(WORK_DIR);
-  } catch {
-    /* already exists */
+/** Normalize a user-provided storage namespace into a safe relative path. */
+function normalizeStorageNamespace(namespace: unknown): string {
+  if (typeof namespace !== 'string' || !namespace.trim()) return DEFAULT_STORAGE_NAMESPACE;
+
+  const cleaned = namespace
+    .split('/')
+    .map((segment) => segment.trim())
+    .filter(Boolean)
+    .map((segment) => segment.replace(/[^A-Za-z0-9._-]/g, '_'))
+    .filter(Boolean)
+    .join('/');
+
+  return cleaned || DEFAULT_STORAGE_NAMESPACE;
+}
+
+/** Best-effort mkdir -p for the Emscripten FS layer. */
+function ensureDir(Module: any, path: string): void {
+  const parts = path.split('/').filter(Boolean);
+  let current = '';
+  for (const part of parts) {
+    current += `/${part}`;
+    try {
+      Module.FS.mkdir(current);
+    } catch {
+      /* already exists */
+    }
   }
-  return { persistent: false };
+}
+
+/** Ensure the game working directory exists in the in-memory filesystem. */
+function mountWorkingDir(Module: any, storageNamespace: string): { persistent: boolean; workDir: string } {
+  const workDir = `${WORK_DIR}/${storageNamespace}`;
+  ensureDir(Module, workDir);
+  return { persistent: false, workDir };
 }
 
 /** True if `path` exists in the (mounted) filesystem. */
@@ -84,6 +111,10 @@ export type Rsdkv3Instance = EngineInstance & {
   devMenu: RsdkDevMenuBridge;
   /** Always false in the current rsdkv3 build (in-memory FS backend). */
   persistent: boolean;
+  /** Relative storage namespace used under /data (e.g. "sonic-cd"). */
+  storageNamespace: string;
+  /** Remove files for this namespace only. */
+  purgeStorage(): { data: boolean; settings: boolean };
 };
 
 /**
@@ -94,6 +125,8 @@ export type Rsdkv3Instance = EngineInstance & {
 export type Rsdkv3LoadConfig = EngineConfig & {
   dataProvider?: () => Promise<AssetData> | AssetData;
   settingsProvider?: () => Promise<AssetData> | AssetData;
+  /** Per-game storage folder under /data used for the in-memory filesystem. */
+  storageNamespace?: string;
 };
 
 /** Boot the RSDKv3 engine. */
@@ -128,9 +161,10 @@ export async function load(config: Rsdkv3LoadConfig): Promise<Rsdkv3Instance> {
       emit({ type: 'error', error: new Error(`rsdkv3 aborted: ${reason}`) }),
   });
 
-  const { persistent } = mountWorkingDir(Module);
-  const dataPath = `${WORK_DIR}/Data.rsdk`;
-  const settingsPath = `${WORK_DIR}/settings.ini`;
+  const storageNamespace = normalizeStorageNamespace(config.storageNamespace);
+  const { persistent, workDir } = mountWorkingDir(Module, storageNamespace);
+  const dataPath = `${workDir}/Data.rsdk`;
+  const settingsPath = `${workDir}/settings.ini`;
 
   // Data.rsdk — precedence: explicit asset > lazy provider > existing file.
   let dataBytes = toUint8(assets?.data);
@@ -155,7 +189,7 @@ export async function load(config: Rsdkv3LoadConfig): Promise<Rsdkv3Instance> {
   }
   // else: keep existing settings.ini in memory FS
 
-  Module.FS.chdir(WORK_DIR);
+  Module.FS.chdir(workDir);
 
   const setPaused = (paused: boolean) => {
     if (typeof Module.web_devmenu_set_paused === 'function') Module.web_devmenu_set_paused(paused);
@@ -191,9 +225,9 @@ export async function load(config: Rsdkv3LoadConfig): Promise<Rsdkv3Instance> {
     reset() {
       throw new Error('rsdkv3: reset() is not supported — destroy() and load() again');
     },
-    setInput(preset) {
+    setInput(map: InputPreset | KeyMap) {
       if (typeof window !== 'undefined') {
-        (window as any).__gamepadKeyMap = preset ?? manifest.input;
+        (window as any).__gamepadKeyMap = map;
       }
     },
     destroy() {
@@ -202,6 +236,22 @@ export async function load(config: Rsdkv3LoadConfig): Promise<Rsdkv3Instance> {
     },
     devMenu,
     persistent,
+    storageNamespace,
+    purgeStorage() {
+      const deleteFileIfExists = (path: string): boolean => {
+        try {
+          Module.FS.unlink(path);
+          return true;
+        } catch {
+          return false;
+        }
+      };
+
+      return {
+        data: deleteFileIfExists(dataPath),
+        settings: deleteFileIfExists(settingsPath),
+      };
+    },
   };
 }
 

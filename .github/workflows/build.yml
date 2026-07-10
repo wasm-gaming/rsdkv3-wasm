@@ -32,7 +32,7 @@ jobs:
       # The contract is a sibling repo; fetch it so tsc can resolve types and the
       # manifest build runs. (Adjust ref once wasm-specs is published.)
       - name: Fetch engine contract
-        run: git clone --depth=1 https://github.com/wasm-gaming/wasm-specs ../wasm-specs && (cd ../wasm-specs && npm install && npm run build)
+        run: git clone --depth=1 https://github.com/wasm-gaming/engine-specs ../wasm-specs && (cd ../wasm-specs && npm install && npm run build)
       - name: Build SDK (TypeScript)
         run: make build-sdk
       - uses: actions/upload-artifact@v4

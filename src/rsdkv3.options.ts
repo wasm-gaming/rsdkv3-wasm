@@ -9,7 +9,7 @@
 // At runtime these options are serialized into Sonic CD's `settings.ini` format
 // when the host does not pass an explicit `settings` asset.
 
-import type { JSONSchema } from '@wasm-gaming/wasm-specs';
+import type { JSONSchema } from '@wasm-gaming/engine-specs';
 
 export interface Rsdkv3Options {
   /**

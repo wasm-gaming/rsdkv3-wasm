@@ -12,10 +12,7 @@
     "strict": true,
     "skipLibCheck": true,
     "verbatimModuleSyntax": true,
-    "baseUrl": ".",
-    "paths": {
-      "@wasm-gaming/wasm-specs": ["../wasm-specs/dist/index.d.ts"]
-    }
+    "baseUrl": "."
   },
   "include": ["src"],
   "exclude": ["src/demo"]

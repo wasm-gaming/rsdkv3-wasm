@@ -2,7 +2,7 @@
 
 RSDKv3 (Retro Software Development Kit v3, Sonic CD 2011 decompilation) compiled
 to WebAssembly, wrapped in a JS SDK conforming to the
-[wasm-gaming engine contract](https://github.com/wasm-gaming/wasm-specs).
+[wasm-gaming engine contract](https://github.com/wasm-gaming/engine-specs).
 
 The engine does not bake game data with `--preload-file`. Hosts provide
 `Data.rsdk` at runtime, so the same `rsdkv3.wasm` can be reused across installs.
