@@ -17,8 +17,13 @@
     "./manifest": "./dist/manifest.json"
   },
   "files": [
-    "dist/",
-    "src/"
+    "dist/rsdkv3/",
+    "dist/manifest.json",
+    "src/rsdkv3.manifest.ts",
+    "src/rsdkv3.options.ts",
+    "src/rsdkv3.sdk.ts",
+    "src/wasm-specs.ts",
+    "README.md"
   ],
   "comment:scripts": "Build logic lives in the Makefile, not here (make build / build-sdk / build-wasm / preview).",
   "scripts": {},
