@@ -1,4 +1,4 @@
-# @wasm-gaming/engine-rsdkv3
+# @wasm-gaming/rsdkv3-wasm
 
 RSDKv3 (Retro Software Development Kit v3, Sonic CD 2011 decompilation) compiled
 to WebAssembly, wrapped in a JS SDK conforming to the
@@ -10,7 +10,7 @@ The engine does not bake game data with `--preload-file`. Hosts provide
 ## Contract surface
 
 ```js
-import { manifest, load } from '@wasm-gaming/engine-rsdkv3';
+import { manifest, load } from '@wasm-gaming/rsdkv3-wasm';
 
 const engine = await load({
   canvas,

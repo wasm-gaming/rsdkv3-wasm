@@ -1,4 +1,4 @@
-// @wasm-gaming/engine-rsdkv3 — SDK entry point.
+// @wasm-gaming/rsdkv3-wasm — SDK entry point.
 //
 // Conforms to the wasm-gaming engine contract (github.com/wasm-gaming/engine-specs):
 // exports `manifest` (declarative) and `load(config)` (imperative).
