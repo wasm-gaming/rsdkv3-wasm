@@ -25,6 +25,9 @@ jobs:
   release:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
+    # Must match the Environment set on the npm trusted publisher (production),
+    # otherwise the OIDC environment claim mismatches and publish 404s.
+    environment: production
 
     steps:
       - name: Checkout
@@ -54,6 +57,12 @@ jobs:
         run: |
           make typecheck
           make test
+
+      - name: Build (SDK + WASM + manifest)
+        # Full build so the tarball actually contains dist/rsdkv3/rsdkv3.{js,wasm}
+        # and dist/manifest.json. `make test` only runs build-lib (SDK .js/.d.ts),
+        # which is why those artifacts were missing from the pack.
+        run: make build
 
       - name: Configure Git
         run: |
