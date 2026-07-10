@@ -1,6 +1,6 @@
 {
   "name": "@wasm-gaming/engine-rsdkv3",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "RSDKv3 (Retro Software Development Kit v3) compiled to WebAssembly, with a JS SDK conforming to the wasm-gaming engine contract. Runs Sonic CD by loading Data.rsdk at runtime.",
   "type": "module",
   "main": "./dist/rsdkv3/rsdkv3.sdk.js",
