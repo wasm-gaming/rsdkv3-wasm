@@ -86,9 +86,20 @@ jobs:
       - name: Push commit and tag
         run: git push origin HEAD --follow-tags
 
+      - name: Package dist archives
+        # Bundle the built dist/ (SDK + WASM + manifest) as release assets.
+        # Both archives contain a top-level rsdkv3/ directory.
+        run: |
+          cp -r dist rsdkv3
+          tar -czf rsdkv3.tar.gz rsdkv3
+          zip -r rsdkv3.zip rsdkv3
+
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.bump_version.outputs.new_tag }}
           name: ${{ steps.bump_version.outputs.new_tag }}
           generate_release_notes: true
+          files: |
+            rsdkv3.tar.gz
+            rsdkv3.zip
