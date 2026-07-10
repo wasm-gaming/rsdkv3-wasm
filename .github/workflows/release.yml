@@ -35,14 +35,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
           scope: '@wasm-gaming'
           registry-url: https://registry.npmjs.org
 
       - name: Upgrade npm for OIDC trusted publishing
-        # Trusted publishing (tokenless OIDC) requires npm >= 11.5.1;
-        # Node 20 ships npm 10.x, which silently publishes unauthenticated (404).
+        # Trusted publishing (tokenless OIDC) requires npm >= 11.5.1.
+        # Node 24 already ships npm 11.x; upgrade to latest to be safe.
         run: |
           npm install -g npm@latest
           npm --version
