@@ -3,6 +3,7 @@ node_modules/
 
 # Build workspace + output (TS build + WASM are built in CI and attached to Releases)
 .tmp/
+.peers/
 dist/
 *.tsbuildinfo
 
