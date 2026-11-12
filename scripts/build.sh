@@ -10,9 +10,14 @@ rm -rf "$WORK_DIR"
 mkdir -p "$WORK_DIR"
 mkdir -p "$DIST_DIR"
 
-echo "Cloning Sonic-CD-11-Decompilation repository..."
-git clone --depth=1 https://github.com/Rubberduckycooly/Sonic-CD-11-Decompilation.git "$WORK_DIR"
-git -C "$WORK_DIR" submodule update --init --recursive
+# Pinned: the build's patches are written against this exact revision.
+SONICCD_REV="${SONICCD_REV:-d1bbec59ca92bfa2cd26df270f0461eea16b903b}"   # 2026-07-04
+echo "Fetching Sonic-CD-11-Decompilation @ ${SONICCD_REV}..."
+git init -q "$WORK_DIR"
+git -C "$WORK_DIR" remote add origin https://github.com/Rubberduckycooly/Sonic-CD-11-Decompilation.git
+git -C "$WORK_DIR" fetch -q --depth=1 origin "$SONICCD_REV"
+git -C "$WORK_DIR" checkout -q FETCH_HEAD
+git -C "$WORK_DIR" submodule update --init --recursive --depth=1
 
 echo "Vendoring libtheora (pinned @ 28fd5ec77f0ad0e07a371cef1047828116f6bd8a)..."
 THEORA_TMP="$(mktemp -d)"

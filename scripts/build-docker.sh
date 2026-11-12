@@ -10,7 +10,7 @@ set -euo pipefail
 # Override the image with EMSDK_IMAGE=... if needed.
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-IMAGE="${EMSDK_IMAGE:-emscripten/emsdk:latest}"
+IMAGE="${EMSDK_IMAGE:-emscripten/emsdk:6.0.2}"   # pinned: the image that built 0.1.4
 
 exec docker run --rm \
   -v "$ROOT_DIR:/src" \

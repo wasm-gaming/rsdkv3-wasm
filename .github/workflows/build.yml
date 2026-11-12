@@ -1,26 +1,19 @@
-
 name: Build
 
-# Builds the TypeScript SDK (on a Node runner) and the game-agnostic RSDKv3 WASM
-# (inside an emscripten/emsdk container job — build.sh runs there directly, no
-# `docker run`). On tags it merges both into a Release; on main / manual runs it
-# publishes the demo (dist/) to GitHub Pages.
-
+# Builds the two halves of the package and, on main, deploys the demo to Pages.
+# release.yml builds again from the bumped version and publishes.
 on:
   push:
-    branches:
-      - main
-    tags:
-      - 'v*'
+    branches: [main]
+  pull_request:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
-# Serialize Pages deployments (don't cancel an in-progress one).
 concurrency:
-  group: pages
-  cancel-in-progress: false
+  group: build-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   sdk:
@@ -30,9 +23,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      # engine-specs is consumed from npm; no sibling-repo bootstrap is needed.
-      - name: Build SDK (TypeScript)
-        run: make build-sdk
+          cache: npm
+      - run: npm ci
+      - name: Typecheck and test (the built package, loaded with no import map)
+        run: make test
+      - run: make demo
       - uses: actions/upload-artifact@v4
         with:
           name: sdk-dist
@@ -40,51 +35,22 @@ jobs:
 
   wasm:
     runs-on: ubuntu-latest
-    container: emscripten/emsdk:latest
+    container:
+      image: emscripten/emsdk:6.0.2   # pinned, same as scripts/build-docker.sh
     steps:
       - uses: actions/checkout@v4
-      # build.sh runs directly in this container (emcc/make/git/python3/perl are
-      # all present in emscripten/emsdk); it does not call Docker itself.
-      - name: Build WASM
-        run: bash scripts/build.sh
+      - name: Build RSDKv3 (pinned upstream revision)
+        run: |
+          apt-get update -qq && apt-get install -y -qq git python3
+          make build-wasm-ci
       - uses: actions/upload-artifact@v4
         with:
           name: wasm-dist
-          path: dist/
+          path: dist/rsdkv3/rsdkv3.*
 
-  release:
-    needs: [sdk, wasm]
-    if: startsWith(github.ref, 'refs/tags/')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: sdk-dist
-          path: dist
-      - uses: actions/download-artifact@v4
-        with:
-          name: wasm-dist
-          path: dist
-      - name: Attach to Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            dist/rsdkv3/rsdkv3.js
-            dist/rsdkv3/rsdkv3.wasm
-            dist/rsdkv3/rsdkv3.sdk.js
-            dist/rsdkv3/rsdkv3.sdk.d.ts
-            dist/rsdkv3/rsdkv3.options.js
-            dist/rsdkv3/rsdkv3.options.d.ts
-            dist/rsdkv3/rsdkv3.manifest.js
-            dist/rsdkv3/rsdkv3.manifest.d.ts
-            dist/manifest.json
-            dist/index.html
-            dist/demo.js
-
-  # Publish the demo (dist/) to GitHub Pages. No Data.rsdk ships (git-ignored), so
-  # the live demo shows the pick/drag-and-drop fallback.
   pages:
     needs: [sdk, wasm]
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -95,18 +61,12 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/download-artifact@v4
-        with:
-          name: sdk-dist
-          path: dist
+        with: { name: sdk-dist, path: dist }
       - uses: actions/download-artifact@v4
-        with:
-          name: wasm-dist
-          path: dist
+        with: { name: wasm-dist, path: dist/rsdkv3 }
       - uses: actions/configure-pages@v5
-        with:
-          enablement: true
+        with: { enablement: true }
       - uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist
+        with: { path: dist }
       - id: deploy
         uses: actions/deploy-pages@v4
