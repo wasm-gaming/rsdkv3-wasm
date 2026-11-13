@@ -21,10 +21,14 @@
     "./options": {
       "types": "./dist/rsdkv3/rsdkv3.options.d.ts",
       "import": "./dist/rsdkv3/rsdkv3.options.js"
+    },
+    "./app": {
+      "import": "./dist/rsdkv3/app/app.js"
     }
   },
   "files": [
     "dist/rsdkv3/",
+    "src/app/",
     "src/rsdkv3.options.ts",
     "src/rsdkv3.sdk.ts",
     "README.md"
