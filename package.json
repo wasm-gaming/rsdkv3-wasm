@@ -1,6 +1,6 @@
 {
   "name": "@wasm-gaming/rsdkv3-wasm",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "RSDKv3 (Sonic CD decompilation) compiled to WebAssembly, with a self-contained JS SDK implementing the wasm-gaming engine contract. Data.rsdk is loaded at runtime.",
   "repository": {
     "type": "git",
