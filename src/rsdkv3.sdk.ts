@@ -446,7 +446,7 @@ export class Rsdkv3Play extends EnginePlayBase<Rsdkv3Payloads> {
 export class Rsdkv3SDK extends EngineSDKBase<Rsdkv3Payloads> {
   static readonly id = ENGINE_ID;
   /** Kept in step with package.json by `node scripts/sync-version.mjs`. */
-  static readonly version = '0.2.0';
+  static readonly version = '0.2.1';
   static readonly name = 'Retro Software Development Kit v3';
   static readonly description =
     'RSDKv3 (Sonic CD 2011 decompilation) compiled to WebAssembly. Ships none of the game: the player provides Data.rsdk, and it never leaves their browser.';
