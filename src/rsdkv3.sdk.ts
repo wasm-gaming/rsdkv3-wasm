@@ -104,6 +104,23 @@ export function storagePath(
   return { namespace: cleaned, path: `${engineId}/${cleaned}`, prefixed };
 }
 
+/**
+ * Player 1's keyboard in the generated `settings.ini` (`[Keyboard 1]`), as in the other
+ * Sonics: arrows, A/S/D for buttons A/B/C, Enter = Start. RSDKv3 has no X/Y/Z or Select
+ * on the keyboard. SDL2 scancodes, which is what the engine reads (`Userdata.cpp`); its
+ * own defaults were Z/X/C.
+ */
+export const RSDKV3_KEYBOARD_1 = {
+  Up: 82,
+  Down: 81,
+  Left: 80,
+  Right: 79,
+  A: 4, // A
+  B: 22, // S
+  C: 7, // D
+  Start: 40, // Enter
+} as const;
+
 /** Serialise the engine config into RSDKv3's settings.ini. */
 export function buildSettingsIni(config: Rsdkv3Config): string {
   return [
@@ -129,6 +146,9 @@ export function buildSettingsIni(config: Rsdkv3Config): string {
     'BGMVolume=1.000000',
     'SFXVolume=1.000000',
     `Soundtrack=${(config.soundtrack ?? 0) | 0}`,
+    '',
+    '[Keyboard 1]',
+    ...Object.entries(RSDKV3_KEYBOARD_1).map(([key, scancode]) => `${key}=${scancode}`),
     '',
   ].join('\n');
 }
