@@ -16,6 +16,8 @@ export type Rsdkv3Asset =
 
 /** The engine, written into the generated `settings.ini`. Fixed for the life of the wasm. */
 export interface Rsdkv3Config {
+  /** How the picture is scaled up: crisp pixels (the default) or the browser's smoothing. Live. */
+  renderFilter?: 'pixelated' | 'smooth';
   /** RSDKv3's native in-canvas Dev Menu. A host draws its own from `play.devMenu`. */
   devMenu?: boolean;
   /** RSDKv3 `EngineDebugMode`. */
@@ -75,6 +77,18 @@ export const RSDKV3_VIDEO = { width: 426, height: 240, aspect: '16:9' } as const
 
 export const RSDKV3_SPEC: EngineSpec<Rsdkv3Payloads> = {
   config: {
+    renderFilter: {
+      default: 'pixelated',
+      enum: ['pixelated', 'smooth'],
+      live: true,
+      description: "Scaling: crisp pixels or the browser's smoothing (CSS image-rendering on the canvas).",
+      label: { en: 'Smoothing', es: 'Suavizado' },
+      group: 'video',
+      valueLabels: [
+        { en: 'Sharp pixels', es: 'Píxeles nítidos' },
+        { en: 'Smooth', es: 'Suavizado' },
+      ],
+    },
     devMenu: {
       default: false,
       live: false,
@@ -82,7 +96,18 @@ export const RSDKV3_SPEC: EngineSpec<Rsdkv3Payloads> = {
     },
     engineDebugMode: { default: false, live: false, description: 'RSDKv3 EngineDebugMode.' },
     vsync: { default: false, live: false, description: 'VSync in the generated settings.ini.' },
-    soundtrack: { default: 0, enum: [0, 1], live: false, description: 'Sonic CD soundtrack: 0 = JP/EU, 1 = US.' },
+    soundtrack: {
+      default: 0,
+      enum: [0, 1],
+      live: false,
+      description: 'Sonic CD soundtrack: 0 = JP/EU, 1 = US.',
+      label: { en: 'Soundtrack', es: 'Banda sonora' },
+      group: 'audio',
+      valueLabels: [
+        { en: 'Japan / Europe', es: 'Japón / Europa' },
+        { en: 'USA', es: 'EE. UU.' },
+      ],
+    },
     language: { default: 0, live: false, description: 'RSDKv3 language index (0 = English).' },
     disableTouchControls: { default: true, live: false, description: 'Hide the touch controls.' },
     jsUrl: { live: false, description: 'Emscripten glue URL. Defaults to ./rsdkv3.js.' },
