@@ -48,6 +48,8 @@ export type {
   Rsdkv3Storage,
 } from './rsdkv3.options.js';
 export { RSDKV3_SPEC, RSDKV3_VIDEO } from './rsdkv3.options.js';
+export { RSDKV3_CONTROLS, controlTables, remapPad, type Rsdkv3Controls, type Rsdkv3ControlSpec } from './rsdkv3.controls.js';
+import { controlTables, keyCodeOf, remapPad, type Rsdkv3Controls, type Rsdkv3ControlTables } from './rsdkv3.controls.js';
 
 const ENGINE_ID = 'rsdkv3';
 const DEFAULT_STORAGE_NAMESPACE = 'default';
@@ -214,6 +216,45 @@ export class Rsdkv3Play extends EnginePlayBase<Rsdkv3Payloads> {
     if (document.visibilityState === 'hidden') void this.flushSaves();
   };
 
+  #controls: Rsdkv3Controls = {};
+  #tables: Rsdkv3ControlTables = controlTables();
+  #getGamepads: (() => (Gamepad | null)[]) | null = null;
+
+  /**
+   * The keyboard, remapped (see `rsdkv3.controls.ts`): a physical key bound to a control
+   * reaches the engine as that control's default key; a default key no control has any more
+   * is swallowed. Real presses only: the ones replayed here pass through.
+   */
+  #onRemapKey = (event: KeyboardEvent): void => {
+    if (!event.isTrusted || this.#pauseOwner || !this.#module) return;
+    const control = this.#tables.keys.get(event.code);
+    if (!control && !this.#tables.blocked.has(event.code)) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (!control || event.repeat) return;
+    const replay = new KeyboardEvent(event.type, { code: control.code, key: control.key, bubbles: true, cancelable: true });
+    for (const name of ['keyCode', 'which']) Object.defineProperty(replay, name, { get: () => keyCodeOf(control) });
+    (this.#canvas ?? window).dispatchEvent(replay);
+  };
+
+  /** The canvas's scaling, from `config.renderFilter`. */
+  async #applyFilter(): Promise<void> {
+    const canvas = this.#canvas;
+    if (!canvas) return;
+    const described = (await this.config()) as unknown as { renderFilter?: { value?: string } };
+    canvas.style.imageRendering = described.renderFilter?.value === 'smooth' ? 'auto' : 'pixelated';
+  }
+
+  /**
+   * Rebind the controls (ids from {@link RSDKV3_CONTROLS}): physical keys
+   * (`KeyboardEvent.code`) and every pad's buttons (standard mapping). What is left out keeps
+   * the engine's default. Live.
+   */
+  setControls(controls: Rsdkv3Controls): void {
+    this.#controls = controls;
+    this.#tables = controlTables(controls);
+  }
+
   constructor(init?: EngineInit<Rsdkv3Payloads>, events?: EventEmitter<EventsOf<Rsdkv3Payloads>>) {
     super(RSDKV3_SPEC, init, events);
   }
@@ -297,6 +338,7 @@ export class Rsdkv3Play extends EnginePlayBase<Rsdkv3Payloads> {
     this.#canvas.tabIndex = 0;
     this.#canvas.style.display = 'block';
     this.#canvas.style.imageRendering = 'pixelated';
+    void this.#applyFilter();
     this.#canvas.addEventListener('contextmenu', (event) => event.preventDefault());
     if (this.#ownsCanvas && this.#box) {
       this.#boxObserver?.disconnect();
@@ -313,11 +355,16 @@ export class Rsdkv3Play extends EnginePlayBase<Rsdkv3Payloads> {
     await this.#boot();
   }
 
-  protected override patched(_kind: PayloadKind, _patch: object): void {
-    // Nothing in RSDKV3_SPEC is live: settings.ini is read once, at boot.
+  protected override patched(kind: PayloadKind, patch: object): void {
+    // Only the canvas's smoothing is live: settings.ini is read once, at boot.
+    if (kind === 'config' && 'renderFilter' in patch) void this.#applyFilter();
   }
 
   protected override async close(): Promise<void> {
+    window.removeEventListener('keydown', this.#onRemapKey, true);
+    window.removeEventListener('keyup', this.#onRemapKey, true);
+    if (this.#getGamepads) (navigator as Navigator & { getGamepads: () => (Gamepad | null)[] }).getGamepads = this.#getGamepads;
+    this.#getGamepads = null;
     if (this.#saveTimer) clearInterval(this.#saveTimer);
     this.#saveTimer = null;
     document.removeEventListener('visibilitychange', this.#onHidden);
@@ -392,6 +439,18 @@ export class Rsdkv3Play extends EnginePlayBase<Rsdkv3Payloads> {
     if (this.#persist) await this.#restoreSave();
 
     Module.FS.chdir(this.#workDir);
+    // The player's bindings sit in front of SDL: keys on the window (capture), pads through
+    // a wrapped navigator.getGamepads().
+    this.#tables = controlTables(this.#controls);
+    window.addEventListener('keydown', this.#onRemapKey, true);
+    window.addEventListener('keyup', this.#onRemapKey, true);
+    const nav = navigator as Navigator & { getGamepads?: () => (Gamepad | null)[] };
+    if (nav.getGamepads && !this.#getGamepads) {
+      const original = nav.getGamepads.bind(nav);
+      this.#getGamepads = nav.getGamepads;
+      nav.getGamepads = () =>
+        original().map((pad) => (pad ? (remapPad(pad, this.#tables.pad) as unknown as Gamepad) : pad));
+    }
     Module.callMain(['UsingCWD']);
 
     if (this.#persist) {
