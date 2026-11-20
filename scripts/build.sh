@@ -349,7 +349,8 @@ int main(int argc, char *argv[])
     }
 
 #ifdef __EMSCRIPTEN__
-    SDL_Init(SDL_INIT_EVERYTHING);
+    // Not SDL_INIT_EVERYTHING: see the SDL_INIT_EVERYTHING step before the build.
+    SDL_Init(SDL_INIT_TIMER | SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER);
 	emscripten_set_main_loop(main_loop, 0, 1);
 #else
     Engine.Init();
@@ -431,6 +432,20 @@ EMSCRIPTEN_BINDINGS(web_devmenu)
     emscripten::function("web_devmenu_set_paused", &web_devmenu_set_paused);
 }
 WEBMENU_EOF
+
+echo "Replacing SDL_INIT_EVERYTHING with the subsystems Emscripten's SDL2 has..."
+# SDL_INIT_EVERYTHING also asks for subsystems Emscripten's SDL2 port does not build
+# (haptic, sensor). One failing sends SDL_InitSubSystem down its quit_and_error path,
+# which quits every subsystem that call had started -- the joystick included, and with
+# it the gamepadconnected handlers: the engine never sees a pad, in game or later
+# (RECORD/2026-11-20.gamepad-lost-at-sdl-init.WIP.md). The engine's own init calls it
+# too, after main(). Every occurrence goes; any left fails the build.
+grep -rl --include='*.cpp' --include='*.hpp' --include='*.h' --include='*.c' 'SDL_INIT_EVERYTHING' "$WORK_DIR/RSDKv3" \
+  | xargs -r sed -i 's/SDL_INIT_EVERYTHING/SDL_INIT_TIMER | SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER/g'
+if grep -rn --include='*.cpp' --include='*.hpp' --include='*.h' --include='*.c' 'SDL_INIT_EVERYTHING' "$WORK_DIR/RSDKv3"; then
+  echo "error: SDL_INIT_EVERYTHING is still in the engine source (it drops the gamepad)" >&2
+  exit 1
+fi
 
 echo "Building WASM (make)..."
 ( cd "$WORK_DIR" && make )
